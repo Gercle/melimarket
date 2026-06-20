@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: melimarket_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: melimarket
+      MYSQL_USER: meliuser
+      MYSQL_PASSWORD: melipass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  api:
+    build: ./api
+    container_name: melimarket_api
+    environment:
+      DATABASE_URL: "mysql://meliuser:melipass@mysql:3306/melimarket"
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+
+  worker:
+    build: ./worker
+    container_name: melimarket_worker
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: melimarket
+      DB_USER: meliuser
+      DB_PASSWORD: melipass
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

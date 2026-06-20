@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USERS ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String   // TODO: hashear con bcrypt antes de guardar
+  role      Role     @default(BUYER)
+  createdAt DateTime @default(now())
+
+  cart     CartItem[]
+  orders   Order[]
+  products Product[] // productos que vende (si es SELLER)
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+// ─── PRODUCTS ────────────────────────────────────────────────────────────────
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id           Int      @id @default(autoincrement())
+  name         String
+  description  String?  @db.Text
+  currentPrice Decimal  @db.Decimal(10, 2)
+  stock        Int      @default(0)
+  sellerId     Int
+  categoryId   Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  seller       User           @relation(fields: [sellerId], references: [id])
+  category     Category       @relation(fields: [categoryId], references: [id])
+  priceHistory PriceHistory[] // cada cambio de precio queda registrado acá
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+}
+
+// Cada vez que cambia currentPrice en Product, insertar una fila acá
+// Esto se hace en el service (ProductService.updatePrice), NO con triggers SQL
+model PriceHistory {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  price     Decimal  @db.Decimal(10, 2)
+  changedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ─── CART ────────────────────────────────────────────────────────────────────
+
+model CartItem {
+  id        Int @id @default(autoincrement())
+  userId    Int
+  productId Int
+  quantity  Int @default(1)
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId]) // un usuario no puede tener el mismo producto dos veces en el carrito
+}
+
+// ─── ORDERS ──────────────────────────────────────────────────────────────────
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  status    OrderStatus @default(PENDING)
+  total     Decimal     @db.Decimal(10, 2)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id])
+  items   OrderItem[]
+  events  EventQueue[]
+  payment Payment?
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2) // precio al momento de la compra (inmutable)
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ─── PAYMENTS ────────────────────────────────────────────────────────────────
+
+// Simula el pago de una orden. En un sistema real esto llamaría a una pasarela
+// de pago (Mercado Pago, Stripe, etc). Acá lo simulamos: siempre se aprueba.
+model Payment {
+  id        Int           @id @default(autoincrement())
+  orderId   Int           @unique // una orden tiene como máximo un pago
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod @default(CREDIT_CARD)
+  status    PaymentStatus @default(APPROVED)
+  createdAt DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  CASH
+}
+
+enum PaymentStatus {
+  APPROVED
+  REJECTED
+}
+
+// ─── EVENT QUEUE (para el Java Worker) ───────────────────────────────────────
+
+// Node.js escribe acá cuando pasa algo importante.
+// El Java Worker hace polling cada N segundos, procesa los PENDING y los marca SENT.
+model EventQueue {
+  id          Int         @id @default(autoincrement())
+  eventType   EventType
+  orderId     Int?
+  payload     Json        // datos extra que el worker necesita (email, total, etc.)
+  status      EventStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  processedAt DateTime?
+
+  order Order? @relation(fields: [orderId], references: [id])
+}
+
+enum EventType {
+  ORDER_CONFIRMED
+  PAYMENT_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+}
+
+enum EventStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}

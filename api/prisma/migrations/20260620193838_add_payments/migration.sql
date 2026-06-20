@@ -1,0 +1,15 @@
+-- CreateTable
+CREATE TABLE `Payment` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `orderId` INTEGER NOT NULL,
+    `amount` DECIMAL(10, 2) NOT NULL,
+    `method` ENUM('CREDIT_CARD', 'DEBIT_CARD', 'CASH') NOT NULL DEFAULT 'CREDIT_CARD',
+    `status` ENUM('APPROVED', 'REJECTED') NOT NULL DEFAULT 'APPROVED',
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `Payment_orderId_key`(`orderId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `Payment` ADD CONSTRAINT `Payment_orderId_fkey` FOREIGN KEY (`orderId`) REFERENCES `Order`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

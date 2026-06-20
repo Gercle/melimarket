@@ -1,0 +1,33 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (contienen secretos, nunca se suben)
+.env
+.env.local
+.env.*.local
+
+# Builds
+dist/
+dist-ssr/
+build/
+target/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.swp
+
+# Java / Maven
+*.class
+*.jar
+!worker/.mvn/wrapper/*.jar
+
+# Prisma (el cliente generado se regenera con `npx prisma generate`)
+**/node_modules/.prisma/
