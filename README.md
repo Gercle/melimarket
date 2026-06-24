@@ -13,6 +13,20 @@ API y frontend de un marketplace estilo MercadoLibre, hecho como proyecto person
 | Frontend | React + Vite + TypeScript + Tailwind |
 | Auth | JWT con roles (BUYER / SELLER / ADMIN) |
 
+## Screenshots
+
+> Catálogo con búsqueda, filtros por categoría y rango de precio
+
+![Catálogo](screenshots/catalogo.png)
+
+> Detalle de producto
+
+![Detalle de producto](screenshots/producto-detalle.png)
+
+> Carrito de compras
+
+![Carrito](screenshots/carrito.png)
+
 ## Arquitectura
 
 El sistema tiene tres procesos independientes que se comunican a través de la base de datos, no entre sí directamente:
